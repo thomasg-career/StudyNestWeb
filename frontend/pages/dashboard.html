@@ -47,11 +47,12 @@
         async function loadDashboard() {
             try {
                 const profile = await apiFetch("/profile/");
-                document.body.classList.add("visible");
                 document.getElementById("user").innerText =
                     "Hello, " + (profile?.full_name || "User");
             } catch (error) {
                 document.getElementById("user").innerText = "Hello, User";
+            } finally {
+                document.body.classList.add("visible");
             }
         }
 
