@@ -356,10 +356,23 @@
         labels.push(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]);
       }
 
-      const [weeklyData, todayData] = await Promise.all([
-        apiFetch("/stats/weekly"),
-        apiFetch(`/stats/today?date=${todayStr}`)
-      ]);
+      let weeklyData = { days: [] };
+      let todayData = { habits_done: 0 };
+
+      try {
+        [weeklyData, todayData] = await Promise.all([
+          apiFetch("/stats/weekly").catch((error) => {
+            console.error("Weekly stats failed:", error);
+            return { days: [] };
+          }),
+          apiFetch(`/stats/today?date=${todayStr}`).catch((error) => {
+            console.error("Today's stats failed:", error);
+            return { habits_done: 0 };
+          })
+        ]);
+      } catch (error) {
+        console.error("Habit week chart failed:", error);
+      }
 
       const counts = days.map((dateString) => {
         if (dateString === todayStr) {
