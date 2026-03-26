@@ -1,0 +1,116 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url('../assets/doodle_pattern.png');
+    background-size: 250px;
+    opacity: 0.15;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: -1;
+}
+body {
+    position: relative;
+    z-index: 0;
+    font-family: 'Poppins', sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #F9C6D0, #D8C6F0, #C3ECD8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+body.visible {
+    opacity: 1;
+}
+.dashboard {
+    width: 90%;
+    max-width: 700px;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(18px);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(100, 70, 160, 0.2);
+    text-align: center;
+}
+.dashboard-logo {
+    width: 120px;
+    height: auto;
+    margin-bottom: 10px;
+    filter: drop-shadow(0px 8px 12px rgba(147, 112, 204, 0.4));
+}
+h1 {
+    color: #3a1f6e;
+    margin-bottom: 0.5rem;
+}
+#user {
+    color: #6b2535;
+    margin-bottom: 1.5rem;
+}
+.nav-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 2rem;
+}
+.nav-buttons button {
+    padding: 15px;
+    border: none;
+    border-radius: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.nav-buttons button:nth-child(1) {
+    background: #C3ECD8;
+    color: #145c35;
+}
+.nav-buttons button:nth-child(2) {
+    background: #BFD9FF;
+    color: #1e4e8c;
+}
+.nav-buttons button:nth-child(3) {
+    background: #FDD9B5;
+    color: #a65c00;
+}
+.nav-buttons button:nth-child(4) {
+    background: #D8C6F0;
+    color: #3a1f6e;
+}
+.nav-buttons button:nth-child(5) {
+    grid-column: span 2;
+    background: #F9C6D0;
+    color: #6b2535;
+}
+.nav-buttons button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+.logout {
+    background: linear-gradient(135deg, #9370cc, #f08aa1);
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.logout:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+    .nav-buttons {
+        grid-template-columns: 1fr;
+    }
+    .nav-buttons button:nth-child(5) {
+        grid-column: span 1;
+    }
+}

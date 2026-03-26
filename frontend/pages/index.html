@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="../assets/studynest_logo.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyNest</title>
+
+  <link rel="stylesheet" href="../styles/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <script type="module" src="../scripts/api.js"></script>
+
+</head>
+
+<body>
+
+  <div class="container">
+    <img src="../assets/studynestlogo2_clean.png" alt="StudyNest Logo" class="login-logo">
+    <h2>StudyNest</h2>
+
+    <div id="signupName" style="display: none;">
+      <input type="text" id="name" placeholder="Name">
+    </div>
+
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+
+    <div id="signupConfirm" style="display: none;">
+      <input type="password" id="confirmPassword" placeholder="Re-enter Password">
+    </div>
+
+    <button id="authBtn" onclick="handleAuth()">Login</button>
+    <p id="toggleText"
+      style="margin-top: 15px; font-size: 0.9rem; color: #3a1f6e; cursor: pointer; text-decoration: underline;"
+      onclick="toggleMode()">Don't have an account? Sign up</p>
+
+    <p id="msg"></p>
+  </div>
+
+  <script type="module">
+    import { BASE_URL } from "../scripts/api.js";
+
+    if (localStorage.getItem("token")) {
+      window.location.href = "dashboard.html";
+    }
+
+    let isLogin = true;
+
+    function toggleMode() {
+      isLogin = !isLogin;
+      document.getElementById('signupName').style.display = isLogin ? 'none' : 'block';
+      document.getElementById('signupConfirm').style.display = isLogin ? 'none' : 'block';
+      document.getElementById('authBtn').style.background = isLogin ? '#C3ECD8' : 'linear-gradient(135deg, #9370cc, #f08aa1)';
+      document.getElementById('authBtn').style.color = isLogin ? '#145c35' : 'white';
+      document.getElementById('authBtn').innerText = isLogin ? 'Login' : 'Sign Up';
+      document.getElementById('toggleText').innerText = isLogin ? "Don't have an account? Sign up" : "Already have an account? Login";
+      document.getElementById('msg').innerText = '';
+    }
+
+    async function handleAuth() {
+      if (isLogin) {
+        await login();
+      } else {
+        await signup();
+      }
+    }
+    async function signup() {
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      if (!email || !password || !name) {
+        document.getElementById('msg').innerText = "Please fill all fields for signup.";
+        return;
+      }
+      if (password !== confirmPassword) {
+        document.getElementById('msg').innerText = "Passwords do not match!";
+        return;
+      }
+
+      const response = await fetch(`${BASE_URL}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, full_name: name })
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        document.getElementById('msg').innerText = "Signup successful! Please check your gmail to confirm your account creation.";
+        document.getElementById('msg').style.color = "#145c35";
+        alert("Signup successful! Please check your gmail to confirm your account creation.");
+        toggleMode();
+      } else {
+        document.getElementById('msg').innerText = data.error || "Signup failed.";
+        document.getElementById('msg').style.color = "#6b2535";
+      }
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const res = await fetch(`${BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (data.access_token) {
+        localStorage.setItem("token", data.access_token);
+        window.location.href = "dashboard.html";
+      } else {
+        document.getElementById('msg').innerText = data.error || "Login failed.";
+        document.getElementById('msg').style.color = "#6b2535";
+      }
+    }
+
+    window.toggleMode = toggleMode;
+    window.handleAuth = handleAuth;
+  </script>
+
+</body>
+
+</html>

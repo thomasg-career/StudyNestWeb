@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="../assets/studynest_logo.png">
+  <title>Today</title>
+
+  <link rel="stylesheet" href="../styles/today.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <script type="module" src="../scripts/api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="card header" style="align-items: center;">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <a href="dashboard.html"
+          style="text-decoration: none; color: #3a1f6e; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #f5f0fb; transition: all 0.3s ease;"
+          onmouseover="this.style.background='#e3d5f5'; this.style.transform='translateX(-3px)'"
+          onmouseout="this.style.background='#f5f0fb'; this.style.transform='translateX(0)'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-arrow-left">
+            <path d="m12 19-7-7 7-7" />
+            <path d="M19 12H5" />
+          </svg>
+        </a>
+        <h1 style="margin: 0;">Today</h1>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+        <p id="date" style="margin: 0;"></p>
+        <div id="streakBadge"
+          style="font-size: 13px; font-weight: 600; color: #FFC107; display: flex; align-items: center; gap: 4px;">🔥
+          <span id="streakCount">0</span> day streak
+        </div>
+      </div>
+    </div>
+
+    <div class="top-section">
+
+      <div class="card">
+        <h2>Tasks</h2>
+        <div class="input-group">
+          <input id="taskInput" placeholder="Add task...">
+          <button onclick="addTask()">+</button>
+        </div>
+        <div id="taskList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Task Progress</h2>
+        <canvas id="taskChart"></canvas>
+      </div>
+
+      <div class="card center">
+        <div id="taskCircle" class="circle">0%</div>
+      </div>
+
+    </div>
+
+    <div class="card quote" id="quote"></div>
+
+    <div class="middle-section">
+
+      <div class="card">
+        <h3>Mood</h3>
+        <div class="slider-container" style="margin-top:25px;">
+          <input type="range" id="mood" min="0" max="100">
+          <div class="slider-tooltip" id="moodTooltip">0%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Energy</h3>
+        <div class="slider-container" style="margin-top:25px;">
+          <input type="range" id="energy" min="0" max="100">
+          <div class="slider-tooltip" id="energyTooltip">0%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Stats</h3>
+        <canvas id="moodChart"></canvas>
+      </div>
+
+    </div>
+
+    <div class="card table"
+      style="display: flex; align-items: center; justify-content: space-between; flex-direction: row; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; gap: 20px;">
+        <div>Mood: <span id="moodVal">--</span></div>
+        <div>Energy: <span id="energyVal">--</span></div>
+      </div>
+      <button class="btn-save" onclick="saveMood()">Save Stats</button>
+    </div>
+
+    <div class="bottom-section">
+
+      <div class="card">
+        <h2>Habits</h2>
+        <div class="input-group">
+          <input id="habitInput" placeholder="New habit">
+          <button onclick="addHabit()">+</button>
+        </div>
+        <div id="habitList"></div>
+      </div>
+
+      <div class="card center">
+        <div id="habitCircle" class="circle">0%</div>
+      </div>
+
+      <div class="card">
+        <h2>This Week</h2>
+        <canvas id="habitWeekChart"></canvas>
+        <div id="habitWeekStats" style="margin-top: 12px; font-size: 13px; color: #777; text-align: center;"></div>
+      </div>
+
+    </div>
+
+    <div class="card">
+      <h2>Notes</h2>
+      <textarea id="notesInput"></textarea>
+      <button class="btn-save" style="width: 100%; margin-top: 15px;" onclick="saveNote()">Save Note</button>
+    </div>
+
+  </div>
+
+  <div id="toast">
+    <span id="toast-icon">✨</span>
+    <span id="toast-msg">Message goes here</span>
+  </div>
+
+  <script type="module">
+    import { apiFetch } from "../scripts/api.js";
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "index.html";
+    }
+
+    const taskInput = document.getElementById("taskInput");
+    const taskList = document.getElementById("taskList");
+    const taskCircle = document.getElementById("taskCircle");
+    const habitInput = document.getElementById("habitInput");
+    const habitList = document.getElementById("habitList");
+    const habitCircle = document.getElementById("habitCircle");
+    const habitWeekStats = document.getElementById("habitWeekStats");
+    const moodSlider = document.getElementById("mood");
+    const energySlider = document.getElementById("energy");
+    const moodVal = document.getElementById("moodVal");
+    const energyVal = document.getElementById("energyVal");
+    const moodTooltip = document.getElementById("moodTooltip");
+    const energyTooltip = document.getElementById("energyTooltip");
+    const notesInput = document.getElementById("notesInput");
+    let moodChart;
+    let taskChart;
+    let habitWeekChart;
+
+    function getISTDateString(date = new Date()) {
+      const ist = new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
+      return ist.toISOString().split("T")[0];
+    }
+
+    function isSameISTDay(isoString, dateString) {
+      return getISTDateString(new Date(isoString)) === dateString;
+    }
+
+    function formatLocalDate(dateString) {
+      const [year, month, day] = dateString.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    document.getElementById("date").innerText = new Date().toDateString();
+    moodSlider.oninput = updateMood;
+    energySlider.oninput = updateMood;
+    loadQuote();
+    init();
+
+    async function init() {
+      try {
+        await Promise.all([
+          loadTasks(),
+          loadHabits(),
+          loadMood(),
+          loadNotes()
+        ]);
+        await saveStreak();
+      } catch (error) {
+        console.error(error);
+        showToast("Could not load today's data.", "error");
+      }
+    }
+
+    async function addTask() {
+      const text = taskInput.value.trim();
+      if (!text) {
+        showToast("Please enter a task first!", "error");
+        return;
+      }
+
+      await apiFetch("/tasks/", {
+        method: "POST",
+        body: JSON.stringify({ text })
+      });
+
+      taskInput.value = "";
+      await loadTasks();
+      await saveStreak();
+    }
+
+    async function loadTasks() {
+      const todayString = getISTDateString();
+      const data = await apiFetch(`/tasks/?date=${todayString}`);
+
+      taskList.innerHTML = "";
+      let done = 0;
+      const tasksArr = data || [];
+
+      tasksArr.forEach((task) => {
+        if (task.completed) done++;
+        const div = document.createElement("div");
+        div.className = "task";
+        div.innerHTML = `
+          <div style="display:flex; align-items:center; gap:10px;">
+            <input type="checkbox" ${task.completed ? "checked" : ""}
+              onchange="toggleTask('${task.id}',this.checked)">
+            <span class="${task.completed ? "done" : ""}">${task.text}</span>
+          </div>
+          <button onclick="deleteTask('${task.id}')" style="background:none; border:none; cursor:pointer; color:#ff6b6b; padding:4px;" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+          </button>
+        `;
+        taskList.appendChild(div);
+      });
+
+      updateTaskUI(tasksArr.length, done);
+    }
+
+    async function toggleTask(id, completed) {
+      await apiFetch(`/tasks/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ completed })
+      });
+      await loadTasks();
+      await saveStreak();
+    }
+
+    async function deleteTask(id) {
+      await apiFetch(`/tasks/${id}`, {
+        method: "DELETE"
+      });
+      await loadTasks();
+      await saveStreak();
+    }
+
+    function updateTaskUI(total, done) {
+      const percent = total ? Math.round((done / total) * 100) : 0;
+      taskCircle.innerText = percent + "%";
+      taskCircle.style.background = `conic-gradient(#9370cc ${percent}%,#eee ${percent}%)`;
+
+      if (taskChart) taskChart.destroy();
+      taskChart = new Chart(document.getElementById("taskChart"), {
+        type: "bar",
+        data: {
+          labels: ["Done", "Pending"],
+          datasets: [{
+            data: [done, total - done],
+            backgroundColor: ["#c3ecd8", "#f9c6d0"],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, border: { display: false } },
+            y: { grid: { display: false }, border: { display: false }, ticks: { display: false } }
+          }
+        }
+      });
+    }
+
+    async function addHabit() {
+      const text = habitInput.value.trim();
+      if (!text) {
+        showToast("Please enter a habit first!", "error");
+        return;
+      }
+
+      await apiFetch("/habits/", {
+        method: "POST",
+        body: JSON.stringify({ name: text })
+      });
+
+      habitInput.value = "";
+      await loadHabits();
+      await saveStreak();
+    }
+
+    async function loadHabits() {
+      const todayString = getISTDateString();
+      const [habits, logs] = await Promise.all([
+        apiFetch("/habits/"),
+        apiFetch(`/habits/logs?date=${todayString}`)
+      ]);
+
+      habitList.innerHTML = "";
+      let done = 0;
+      const habitsArr = habits || [];
+      const logsArr = logs || [];
+
+      habitsArr.forEach((habit) => {
+        const completed = logsArr.some((log) => log.habit_id === habit.id);
+        if (completed) done++;
+        const div = document.createElement("div");
+        div.className = "task";
+        div.innerHTML = `
+          <div style="display:flex; align-items:center; gap:10px;">
+            <input type="checkbox" ${completed ? "checked" : ""}
+              onchange="toggleHabit('${habit.id}')">
+            <span class="${completed ? "done" : ""}">${habit.name}</span>
+          </div>
+          <button onclick="deleteHabit('${habit.id}')" style="background:none; border:none; cursor:pointer; color:#ff6b6b; padding:4px;" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+          </button>
+        `;
+        habitList.appendChild(div);
+      });
+
+      const percent = habitsArr.length ? Math.round((done / habitsArr.length) * 100) : 0;
+      habitCircle.innerText = percent + "%";
+      habitCircle.style.background = `conic-gradient(#f08aa1 ${percent}%,#eee ${percent}%)`;
+      await loadHabitWeekChart();
+    }
+
+    async function loadHabitWeekChart() {
+      const today = new Date();
+      const todayStr = getISTDateString(today);
+      const dow = today.getDay();
+      const diffToMon = dow === 0 ? -6 : 1 - dow;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + diffToMon);
+      const days = [];
+      const labels = [];
+
+      for (let index = 0; index < 7; index++) {
+        const day = new Date(monday);
+        day.setDate(monday.getDate() + index);
+        days.push(getISTDateString(day));
+        labels.push(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]);
+      }
+
+      const [weeklyData, todayData] = await Promise.all([
+        apiFetch("/stats/weekly"),
+        apiFetch(`/stats/today?date=${todayStr}`)
+      ]);
+
+      const counts = days.map((dateString) => {
+        if (dateString === todayStr) {
+          return todayData.habits_done || 0;
+        }
+        const stat = (weeklyData.days || []).find((entry) => String(entry.date).slice(0, 10) === dateString);
+        return stat?.habits_done || 0;
+      });
+
+      const totalDone = counts.reduce((sum, value) => sum + value, 0);
+      const daysWithData = counts.filter((value) => value > 0).length;
+      habitWeekStats.innerHTML = `✅ ${totalDone} completions this week &nbsp;|&nbsp; 🔥 ${daysWithData} active days`;
+
+      if (habitWeekChart) habitWeekChart.destroy();
+      habitWeekChart = new Chart(document.getElementById("habitWeekChart"), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            data: counts,
+            backgroundColor: days.map((dateString) => dateString === todayStr ? "#9370cc" : "#D8C6F0"),
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 11 } } },
+            y: { grid: { display: false }, border: { display: false }, ticks: { display: false }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    async function toggleHabit(id) {
+      const todayString = getISTDateString();
+      const logs = await apiFetch(`/habits/logs?date=${todayString}`);
+      const existing = (logs || []).find((log) => log.habit_id === id);
+
+      if (existing) {
+        await apiFetch(`/habits/logs/${existing.id}`, {
+          method: "DELETE"
+        });
+      } else {
+        await apiFetch("/habits/logs", {
+          method: "POST",
+          body: JSON.stringify({ habit_id: id, log_date: todayString })
+        });
+      }
+
+      await loadHabits();
+      await saveStreak();
+    }
+
+    async function deleteHabit(id) {
+      await apiFetch(`/habits/${id}`, {
+        method: "DELETE"
+      });
+      await loadHabits();
+      await saveStreak();
+    }
+
+    function updateMood() {
+      moodVal.innerText = moodSlider.value + "%";
+      energyVal.innerText = energySlider.value + "%";
+      moodTooltip.innerText = moodSlider.value + "%";
+      moodTooltip.style.left = `calc(${moodSlider.value}% + (${8 - moodSlider.value * 0.15}px))`;
+      energyTooltip.innerText = energySlider.value + "%";
+      energyTooltip.style.left = `calc(${energySlider.value}% + (${8 - energySlider.value * 0.15}px))`;
+
+      if (moodChart) moodChart.destroy();
+      moodChart = new Chart(document.getElementById("moodChart"), {
+        type: "bar",
+        data: {
+          labels: ["Mood", "Energy"],
+          datasets: [{
+            data: [moodSlider.value, energySlider.value],
+            backgroundColor: ["#c3ecd8", "#f9c6d0"],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, border: { display: false } },
+            y: { grid: { display: false }, border: { display: false }, ticks: { display: false }, max: 100 }
+          }
+        }
+      });
+    }
+
+    async function loadMood() {
+      const todayString = getISTDateString();
+      const data = await apiFetch(`/mood/?date=${todayString}&limit=1`);
+
+      if (!data || !data.length) {
+        moodSlider.value = 0;
+        energySlider.value = 0;
+        updateMood();
+        return;
+      }
+
+      moodSlider.value = data[0].mood;
+      energySlider.value = data[0].energy;
+      updateMood();
+    }
+
+    async function saveMood() {
+      try {
+        await apiFetch("/mood/", {
+          method: "POST",
+          body: JSON.stringify({
+            mood: parseInt(moodSlider.value, 10),
+            energy: parseInt(energySlider.value, 10)
+          })
+        });
+        showToast("Stats saved successfully!");
+        await saveStreak();
+      } catch (error) {
+        showToast("Failed to save. Please try again.", "error");
+      }
+    }
+
+    async function saveNote() {
+      const text = notesInput.value.trim();
+      if (!text) {
+        showToast("Cannot save an empty note!", "error");
+        return;
+      }
+
+      const todayString = getISTDateString();
+      const notes = await apiFetch("/notes/");
+      const existing = (notes || []).find((note) => isSameISTDay(note.created_at, todayString));
+
+      if (existing) {
+        await apiFetch(`/notes/${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ content: text })
+        });
+      } else {
+        await apiFetch("/notes/", {
+          method: "POST",
+          body: JSON.stringify({ content: text })
+        });
+      }
+
+      showToast("Note saved!");
+      await loadNotes();
+    }
+
+    async function loadNotes() {
+      const todayString = getISTDateString();
+      const notes = await apiFetch("/notes/");
+      const todayNote = (notes || []).find((note) => isSameISTDay(note.created_at, todayString));
+      notesInput.value = todayNote ? todayNote.content : "";
+    }
+
+    async function loadStreak() {
+      const profile = await apiFetch("/profile/");
+      document.getElementById("streakCount").innerText = profile?.current_streak || 0;
+    }
+
+    async function saveStreak() {
+      const todayString = getISTDateString();
+      const currentYear = Number(todayString.slice(0, 4));
+      const [todayData, currentYearData, previousYearData] = await Promise.all([
+        apiFetch(`/stats/today?date=${todayString}`),
+        apiFetch(`/stats/yearly?year=${currentYear}`),
+        apiFetch(`/stats/yearly?year=${currentYear - 1}`)
+      ]);
+
+      const activeDates = new Set();
+      [currentYearData, previousYearData].forEach((payload) => {
+        (payload.days || []).forEach((entry) => {
+          if ((entry.tasks_done || 0) > 0 || (entry.habits_done || 0) > 0) {
+            activeDates.add(String(entry.date).slice(0, 10));
+          }
+        });
+      });
+
+      if ((todayData.tasks_done || 0) > 0 || (todayData.habits_done || 0) > 0) {
+        activeDates.add(todayString);
+      }
+
+      let streak = 0;
+      let cursor = formatLocalDate(todayString);
+      if (!activeDates.has(todayString)) {
+        cursor.setDate(cursor.getDate() - 1);
+      }
+
+      while (true) {
+        const dateString = getISTDateString(cursor);
+        if (!activeDates.has(dateString)) {
+          break;
+        }
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+
+      await apiFetch("/profile/", {
+        method: "PATCH",
+        body: JSON.stringify({ current_streak: streak })
+      });
+
+      document.getElementById("streakCount").innerText = streak;
+    }
+
+    function showToast(msg, type = "success") {
+      const toast = document.getElementById("toast");
+      const toastMsg = document.getElementById("toast-msg");
+      const toastIcon = document.getElementById("toast-icon");
+      toastMsg.innerText = msg;
+
+      if (type === "error") {
+        toast.classList.add("error");
+        toastIcon.innerText = "❌";
+      } else {
+        toast.classList.remove("error");
+        toastIcon.innerText = "✨";
+      }
+
+      toast.classList.add("show");
+      setTimeout(() => {
+        toast.classList.remove("show");
+      }, 3000);
+    }
+
+    function loadQuote() {
+      const quotes = ["Stay consistent", "Keep going", "Focus daily", "Progress matters"];
+      document.getElementById("quote").innerText = quotes[new Date().getDate() % quotes.length];
+    }
+
+    window.addTask = addTask;
+    window.toggleTask = toggleTask;
+    window.deleteTask = deleteTask;
+    window.addHabit = addHabit;
+    window.toggleHabit = toggleHabit;
+    window.deleteHabit = deleteHabit;
+    window.saveMood = saveMood;
+    window.saveNote = saveNote;
+    window.loadStreak = loadStreak;
+  </script>
+
+</body>
+
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="../assets/studynest_logo.png">
+    <title>Dashboard</title>
+
+    <link rel="stylesheet" href="../styles/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+    <script type="module" src="../scripts/api.js"></script>
+
+</head>
+
+<body>
+
+    <div class="dashboard">
+
+        <img src="../assets/studynestlogo2_clean.png" alt="StudyNest Logo" class="dashboard-logo">
+        <h1>Welcome to StudyNest 🎉</h1>
+        <p id="user"></p>
+
+        <div class="nav-buttons">
+            <button onclick="go('today.html')">Today</button>
+            <button onclick="go('weekly.html')">Weekly</button>
+            <button onclick="go('monthly.html')">Monthly</button>
+            <button onclick="go('yearly.html')">Yearly</button>
+            <button onclick="go('notes.html')">Notes</button>
+        </div>
+
+        <button class="logout" onclick="logout()">Logout</button>
+
+    </div>
+
+    <script type="module">
+        import { apiFetch } from "../scripts/api.js";
+
+        const token = localStorage.getItem("token");
+        if (!token) {
+            window.location.href = "index.html";
+        } else {
+            loadDashboard();
+        }
+
+        async function loadDashboard() {
+            try {
+                const profile = await apiFetch("/profile/");
+                document.body.classList.add("visible");
+                document.getElementById("user").innerText =
+                    "Hello, " + (profile?.full_name || "User");
+            } catch (error) {
+                document.getElementById("user").innerText = "Hello, User";
+            }
+        }
+
+        function go(page) {
+            window.location.href = page;
+        }
+
+        async function logout() {
+            try {
+                await apiFetch("/auth/logout", { method: "POST" });
+            } catch (error) {
+                console.error(error);
+            } finally {
+                localStorage.removeItem("token");
+                window.location.href = "index.html";
+            }
+        }
+
+        window.go = go;
+        window.logout = logout;
+    </script>
+
+</body>
+
+</html>

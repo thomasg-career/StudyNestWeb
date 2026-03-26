@@ -1,0 +1,144 @@
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url('../assets/doodle_pattern.png');
+    background-size: 250px;
+    opacity: 0.15;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: -1;
+}
+body {
+    position: relative;
+    z-index: 0;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #F9C6D0, #D8C6F0, #C3ECD8);
+    padding: 20px;
+}
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.card {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(18px);
+    padding: 20px;
+    border-radius: 20px;
+}
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.top {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 0.8fr;
+    gap: 20px;
+}
+.center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#streakRow {
+    position: relative;
+    margin-top: 20px;
+}
+.streak-line-bg {
+    position: absolute;
+    top: 38px;
+    left: 22px;
+    right: 22px;
+    height: 6px;
+    background: #eee;
+    border-radius: 10px;
+    z-index: 1;
+}
+.streak-line-fill {
+    position: absolute;
+    top: 38px;
+    left: 22px;
+    height: 6px;
+    background: #FFC107;
+    border-radius: 10px;
+    z-index: 2;
+    transition: width 0.4s ease;
+}
+.streak-days-container {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    z-index: 3;
+}
+.streak-day-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 44px;
+}
+.streak-day-label {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.streak-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.streak-circle.active {
+    background: #FFC107;
+    color: white;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.6);
+}
+.streak-circle.active::after {
+    content: "✓";
+    font-size: 18px;
+    font-weight: bold;
+}
+.circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: conic-gradient(#9370cc 0%, #eee 0%);
+    font-weight: bold;
+}
+#daysContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.day-card {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 20px;
+}
+.progress-bar {
+    height: 10px;
+    background: #eee;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: #9370cc;
+}
+
+@media (max-width: 768px) {
+    .top {
+        grid-template-columns: 1fr;
+    }
+    .day-card {
+        grid-template-columns: 1fr;
+    }
+}
