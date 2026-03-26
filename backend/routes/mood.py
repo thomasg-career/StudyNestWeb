@@ -2,8 +2,10 @@ from flask import Blueprint, g, jsonify, request
 
 try:
     from backend.supabase_client import require_auth, user_sb
+    from backend.daily_stats_sync import sync_daily_stats
 except ModuleNotFoundError:
     from supabase_client import require_auth, user_sb
+    from daily_stats_sync import sync_daily_stats
 
 mood_bp = Blueprint('mood', __name__)
 
@@ -68,6 +70,7 @@ def log_mood():
 
     client = user_sb(g.access_token)
     resp = client.from_('mood_logs').insert(payload).execute()
+    sync_daily_stats(g.access_token, g.user_id)
     return jsonify(resp.data[0] if resp.data else {}), 201
 
 
@@ -77,4 +80,5 @@ def delete_mood_log(log_id):
     """DELETE /api/mood/<log_id>"""
     client = user_sb(g.access_token)
     client.from_('mood_logs').delete().eq('id', log_id).eq('user_id', g.user_id).execute()
+    sync_daily_stats(g.access_token, g.user_id)
     return jsonify({"message": "Mood log deleted"}), 200
