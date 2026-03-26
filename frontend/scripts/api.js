@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5000/api";
+const BASE_URL = "https://studynestweb.onrender.com/api";
 
 function getToken() {
   return localStorage.getItem("token");
