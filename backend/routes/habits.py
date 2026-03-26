@@ -2,8 +2,10 @@ from flask import Blueprint, g, jsonify, request
 
 try:
     from backend.supabase_client import require_auth, user_sb
+    from backend.daily_stats_sync import sync_daily_stats
 except ModuleNotFoundError:
     from supabase_client import require_auth, user_sb
+    from daily_stats_sync import sync_daily_stats
 
 habits_bp = Blueprint('habits', __name__)
 
@@ -35,6 +37,7 @@ def create_habit():
         "name":    name,
         "streak":  0
     }).execute()
+    sync_daily_stats(g.access_token, g.user_id)
     return jsonify(resp.data[0] if resp.data else {}), 201
 
 
@@ -44,6 +47,7 @@ def delete_habit(habit_id):
     """DELETE /api/habits/<habit_id>"""
     client = user_sb(g.access_token)
     client.from_('habits').delete().eq('id', habit_id).eq('user_id', g.user_id).execute()
+    sync_daily_stats(g.access_token, g.user_id)
     return jsonify({"message": "Habit deleted"}), 200
 
 
@@ -86,9 +90,11 @@ def log_habit():
             "habit_id": habit_id,
             "log_date": log_date
         }).execute()
+        sync_daily_stats(g.access_token, g.user_id, log_date)
         return jsonify(resp.data[0] if resp.data else {}), 201
     except Exception as e:
         # Duplicate (already logged today) → treat as OK
+        sync_daily_stats(g.access_token, g.user_id, log_date)
         return jsonify({"message": "Already logged", "detail": str(e)}), 200
 
 
@@ -97,5 +103,13 @@ def log_habit():
 def unlog_habit(log_id):
     """DELETE /api/habits/logs/<log_id> — un-marks a habit for a date"""
     client = user_sb(g.access_token)
+    existing = (client.from_('habit_logs').select('log_date')
+                .eq('id', log_id)
+                .eq('user_id', g.user_id)
+                .limit(1)
+                .execute())
+    rows = existing.data or []
+    log_date = rows[0].get('log_date') if rows else None
     client.from_('habit_logs').delete().eq('id', log_id).eq('user_id', g.user_id).execute()
+    sync_daily_stats(g.access_token, g.user_id, log_date)
     return jsonify({"message": "Habit unlogged"}), 200
