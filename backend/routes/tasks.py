@@ -2,8 +2,10 @@ from flask import Blueprint, g, jsonify, request
 
 try:
     from backend.supabase_client import require_auth, user_sb
+    from backend.daily_stats_sync import sync_daily_stats
 except ModuleNotFoundError:
     from supabase_client import require_auth, user_sb
+    from daily_stats_sync import sync_daily_stats
 
 tasks_bp = Blueprint('tasks', __name__)
 
@@ -49,6 +51,7 @@ def create_task():
         "text":      text,
         "completed": False
     }).execute()
+    sync_daily_stats(g.access_token, g.user_id)
 
     return jsonify(resp.data[0] if resp.data else {}), 201
 
@@ -72,6 +75,7 @@ def update_task(task_id):
             .eq('id', task_id)
             .eq('user_id', g.user_id)
             .execute())
+    sync_daily_stats(g.access_token, g.user_id)
 
     return jsonify(resp.data[0] if resp.data else {}), 200
 
@@ -85,4 +89,5 @@ def delete_task(task_id):
     """
     client = user_sb(g.access_token)
     client.from_('tasks').delete().eq('id', task_id).eq('user_id', g.user_id).execute()
+    sync_daily_stats(g.access_token, g.user_id)
     return jsonify({"message": "Task deleted"}), 200
