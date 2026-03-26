@@ -18,6 +18,18 @@ def _ist_today() -> str:
     return datetime.now(ist).strftime('%Y-%m-%d')
 
 
+def _get_current_streak(client, user_id):
+    try:
+        profile = (client.from_('profiles').select('current_streak')
+                   .eq('id', user_id).limit(1).execute())
+        rows = profile.data or []
+        if not rows:
+            return 0
+        return rows[0].get('current_streak', 0) or 0
+    except Exception:
+        return 0
+
+
 @stats_bp.route('/today', methods=['GET'])
 @require_auth
 def today_stats():
@@ -91,14 +103,16 @@ def weekly_stats():
     sunday = monday + timedelta(days=6)
 
     client = user_sb(g.access_token)
-    resp   = (client.from_('daily_stats').select('*').eq('user_id', g.user_id)
-              .gte('date', str(monday)).lte('date', str(sunday))
-              .order('date').execute())
 
-    rows    = {str(r['date'])[:10]: r for r in (resp.data or [])}
-    profile = (client.from_('profiles').select('current_streak')
-               .eq('id', g.user_id).single().execute())
-    streak  = profile.data.get('current_streak', 0) if profile.data else 0
+    try:
+        resp = (client.from_('daily_stats').select('*').eq('user_id', g.user_id)
+                .gte('date', str(monday)).lte('date', str(sunday))
+                .order('date').execute())
+        rows = {str(r['date'])[:10]: r for r in (resp.data or [])}
+    except Exception:
+        rows = {}
+
+    streak = _get_current_streak(client, g.user_id)
 
     days = []
     for i in range(7):
@@ -128,14 +142,16 @@ def monthly_stats():
     last_day  = date(year, month, calendar.monthrange(year, month)[1])
 
     client = user_sb(g.access_token)
-    resp   = (client.from_('daily_stats').select('*').eq('user_id', g.user_id)
-              .gte('date', str(first_day)).lte('date', str(last_day))
-              .order('date').execute())
-    rows   = resp.data or []
 
-    profile = (client.from_('profiles').select('current_streak')
-               .eq('id', g.user_id).single().execute())
-    streak  = profile.data.get('current_streak', 0) if profile.data else 0
+    try:
+        resp = (client.from_('daily_stats').select('*').eq('user_id', g.user_id)
+                .gte('date', str(first_day)).lte('date', str(last_day))
+                .order('date').execute())
+        rows = resp.data or []
+    except Exception:
+        rows = []
+
+    streak = _get_current_streak(client, g.user_id)
 
     # Aggregate totals
     total_done     = sum((r.get('tasks_done', 0) or 0) + (r.get('habits_done', 0) or 0) for r in rows)
@@ -166,14 +182,16 @@ def yearly_stats():
     year      = request.args.get('year', type=int, default=today_dt.year)
 
     client = user_sb(g.access_token)
-    resp   = (client.from_('daily_stats').select('*').eq('user_id', g.user_id)
-              .gte('date', f"{year}-01-01").lte('date', f"{year}-12-31")
-              .order('date').execute())
-    rows   = resp.data or []
 
-    profile = (client.from_('profiles').select('current_streak')
-               .eq('id', g.user_id).single().execute())
-    streak  = profile.data.get('current_streak', 0) if profile.data else 0
+    try:
+        resp = (client.from_('daily_stats').select('*').eq('user_id', g.user_id)
+                .gte('date', f"{year}-01-01").lte('date', f"{year}-12-31")
+                .order('date').execute())
+        rows = resp.data or []
+    except Exception:
+        rows = []
+
+    streak = _get_current_streak(client, g.user_id)
 
     total_done     = sum((r.get('tasks_done', 0) or 0) + (r.get('habits_done', 0) or 0) for r in rows)
     total_expected = sum((r.get('tasks_total', 0) or 0) + (r.get('habits_total', 0) or 0) for r in rows)
