@@ -2,10 +2,10 @@ from flask import Blueprint, g, jsonify, request
 
 try:
     from backend.supabase_client import require_auth, user_sb
-    from backend.daily_stats_sync import sync_daily_stats
+    from backend.routes.daily_stats_sync import sync_daily_stats
 except ModuleNotFoundError:
     from supabase_client import require_auth, user_sb
-    from daily_stats_sync import sync_daily_stats
+    from .daily_stats_sync import sync_daily_stats
 
 tasks_bp = Blueprint('tasks', __name__)
 
@@ -18,7 +18,7 @@ def get_tasks():
     Query params: date (YYYY-MM-DD) — optional, filters by IST date
     Returns all tasks for the current user (optionally filtered by date).
     """
-    date = request.args.get('date')  # e.g. 2025-03-24
+    date = request.args.get('date')
     client = user_sb(g.access_token)
 
     query = client.from_('tasks').select('*').eq('user_id', g.user_id)
@@ -26,7 +26,7 @@ def get_tasks():
     if date:
         query = (query
                  .gte('created_at', f"{date}T00:00:00+05:30")
-                 .lt('created_at',  f"{date}T23:59:59+05:30"))
+                 .lt('created_at', f"{date}T23:59:59+05:30"))
 
     resp = query.order('created_at', desc=False).execute()
     return jsonify(resp.data), 200
@@ -47,12 +47,12 @@ def create_task():
 
     client = user_sb(g.access_token)
     resp = client.from_('tasks').insert({
-        "user_id":   g.user_id,
-        "text":      text,
+        "user_id": g.user_id,
+        "text": text,
         "completed": False
     }).execute()
-    sync_daily_stats(g.access_token, g.user_id)
 
+    sync_daily_stats(g.access_token, g.user_id)
     return jsonify(resp.data[0] if resp.data else {}), 201
 
 
@@ -61,7 +61,7 @@ def create_task():
 def update_task(task_id):
     """
     PATCH /api/tasks/<task_id>
-    Body: { completed: bool }  or  { text: str }
+    Body: { completed: bool } or { text: str }
     Toggles completion or updates text.
     """
     body = request.get_json() or {}
@@ -75,8 +75,8 @@ def update_task(task_id):
             .eq('id', task_id)
             .eq('user_id', g.user_id)
             .execute())
-    sync_daily_stats(g.access_token, g.user_id)
 
+    sync_daily_stats(g.access_token, g.user_id)
     return jsonify(resp.data[0] if resp.data else {}), 200
 
 
@@ -85,7 +85,7 @@ def update_task(task_id):
 def delete_task(task_id):
     """
     DELETE /api/tasks/<task_id>
-    Deletes the task (only if owned by current user — enforced by RLS too).
+    Deletes the task.
     """
     client = user_sb(g.access_token)
     client.from_('tasks').delete().eq('id', task_id).eq('user_id', g.user_id).execute()
