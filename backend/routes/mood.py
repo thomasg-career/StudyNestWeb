@@ -1,4 +1,4 @@
-v from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 try:
     from backend.supabase_client import require_auth, user_sb
