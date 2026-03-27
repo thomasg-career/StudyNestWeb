@@ -80,12 +80,32 @@ async function loadWeekly() {
             energy.push(0);
         }
     }
-    const todayIndex = (today.getDay() === 0) ? 6 : today.getDay() - 1; 
-    renderStreak(taskCounts, currentStreakCount, todayIndex);
+    const todayIndex = (today.getDay() === 0) ? 6 : today.getDay() - 1;
+    const activeCounts = taskCounts.map((taskDone, index) => {
+        return (taskDone || 0) + (habitCounts[index] || 0);
+    });
+    const weeklyFallbackStreak = getVisibleWeeklyStreak(activeCounts, todayIndex);
+    renderStreak(activeCounts, Math.max(currentStreakCount, weeklyFallbackStreak), todayIndex);
     renderCharts(days, taskCounts, taskTotals, habitCounts, habitTotals, moods, energy);
     renderDays(days, taskCounts, taskTotals, habitCounts, habitTotals, moods, energy);
 }
-function renderStreak(tasks, globalStreak, todayIndex) {
+function getVisibleWeeklyStreak(activeCounts, todayIndex) {
+    let streak = 0;
+    let cursor = todayIndex;
+
+    if ((activeCounts[cursor] || 0) === 0) {
+        cursor -= 1;
+    }
+
+    while (cursor >= 0 && (activeCounts[cursor] || 0) > 0) {
+        streak += 1;
+        cursor -= 1;
+    }
+
+    return streak;
+}
+
+function renderStreak(activeCounts, globalStreak, todayIndex) {
     const container = document.getElementById("streakRow");
     if (!container) return;
     container.innerHTML = "";
@@ -99,7 +119,7 @@ function renderStreak(tasks, globalStreak, todayIndex) {
     fillLine.className = "streak-line-fill";
     let streakStartIndex = -1;
     let lastActiveInStreak = -1;
-    let missedToday = tasks[todayIndex] === 0;
+    let missedToday = (activeCounts[todayIndex] || 0) === 0;
     for (let i = 0; i <= todayIndex; i++) {
         let distance = missedToday ? (todayIndex - 1 - i) : (todayIndex - i);
         if (distance >= 0 && distance < globalStreak) {
@@ -123,7 +143,7 @@ function renderStreak(tasks, globalStreak, todayIndex) {
     container.appendChild(fillLine);
     const daysContainer = document.createElement("div");
     daysContainer.className = "streak-days-container";
-    tasks.forEach((t, i) => {
+    activeCounts.forEach((count, i) => {
         const wrap = document.createElement("div");
         wrap.className = "streak-day-wrap";
         const label = document.createElement("div");
@@ -132,7 +152,7 @@ function renderStreak(tasks, globalStreak, todayIndex) {
         const circle = document.createElement("div");
         circle.className = "streak-circle";
         let distance = missedToday ? (todayIndex - 1 - i) : (todayIndex - i);
-        if (distance >= 0 && distance < globalStreak) {
+        if (count > 0 && distance >= 0 && distance < globalStreak) {
             circle.classList.add("active");
         }
         wrap.appendChild(label);
