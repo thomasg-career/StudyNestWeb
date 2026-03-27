@@ -1,4 +1,4 @@
-from flask import Blueprint, g, jsonify, request
+v from flask import Blueprint, g, jsonify, request
 
 try:
     from backend.supabase_client import require_auth, user_sb
@@ -7,108 +7,78 @@ except ModuleNotFoundError:
     from supabase_client import require_auth, user_sb
     from routes.daily_stats_sync import sync_daily_stats
 
+mood_bp = Blueprint("mood", __name__)
 
-habits_bp = Blueprint('habits', __name__)
 
-
-@habits_bp.route('/', methods=['GET'])
+@mood_bp.route("/", methods=["GET"])
 @require_auth
-def get_habits():
-    """GET /api/habits/ — list all habits for the current user"""
+def get_mood_logs():
+    """
+    GET /api/mood/?date=YYYY-MM-DD
+    Returns mood logs for the given date.
+    """
+    date = request.args.get("date")
+    limit = request.args.get("limit", type=int)
     client = user_sb(g.access_token)
-    resp = client.from_('habits').select('*').eq('user_id', g.user_id).execute()
+
+    query = client.from_("mood_logs").select("*").eq("user_id", g.user_id)
+
+    if date:
+        query = (
+            query
+            .gte("created_at", f"{date}T00:00:00+05:30")
+            .lte("created_at", f"{date}T23:59:59+05:30")
+        )
+
+    query = query.order("created_at", desc=True)
+
+    if limit:
+        query = query.limit(limit)
+
+    resp = query.execute()
     return jsonify(resp.data), 200
 
 
-@habits_bp.route('/', methods=['POST'])
+@mood_bp.route("/", methods=["POST"])
 @require_auth
-def create_habit():
+def log_mood():
     """
-    POST /api/habits/
-    Body: { name }
+    POST /api/mood/
+    Body: { mood, energy, happiness? }
     """
     body = request.get_json() or {}
-    name = body.get('name', '').strip()
-    if not name:
-        return jsonify({"error": "name is required"}), 400
+
+    mood = body.get("mood")
+    energy = body.get("energy")
+    happiness = body.get("happiness")
+
+    if mood is None or energy is None:
+        return jsonify({"error": "mood and energy are required"}), 400
+
+    for name, val in [("mood", mood), ("energy", energy)]:
+        if not (0 <= int(val) <= 100):
+            return jsonify({"error": f"{name} must be between 0 and 100"}), 400
+
+    payload = {
+        "user_id": g.user_id,
+        "mood": int(mood),
+        "energy": int(energy),
+    }
+    if happiness is not None:
+        payload["happiness"] = int(happiness)
 
     client = user_sb(g.access_token)
-    resp = client.from_('habits').insert({
-        "user_id": g.user_id,
-        "name": name,
-        "streak": 0
-    }).execute()
+    resp = client.from_("mood_logs").insert(payload).execute()
 
     sync_daily_stats(g.access_token, g.user_id)
     return jsonify(resp.data[0] if resp.data else {}), 201
 
 
-@habits_bp.route('/<habit_id>', methods=['DELETE'])
+@mood_bp.route("/<log_id>", methods=["DELETE"])
 @require_auth
-def delete_habit(habit_id):
-    """DELETE /api/habits/<habit_id>"""
+def delete_mood_log(log_id):
+    """DELETE /api/mood/<log_id>"""
     client = user_sb(g.access_token)
-    client.from_('habits').delete().eq('id', habit_id).eq('user_id', g.user_id).execute()
+    client.from_("mood_logs").delete().eq("id", log_id).eq("user_id", g.user_id).execute()
     sync_daily_stats(g.access_token, g.user_id)
-    return jsonify({"message": "Habit deleted"}), 200
-
-
-@habits_bp.route('/logs', methods=['GET'])
-@require_auth
-def get_habit_logs():
-    """
-    GET /api/habits/logs?date=YYYY-MM-DD
-    Returns habit_logs for the given date.
-    """
-    date = request.args.get('date')
-    client = user_sb(g.access_token)
-    query = client.from_('habit_logs').select('*').eq('user_id', g.user_id)
-    if date:
-        query = query.eq('log_date', date)
-    resp = query.execute()
-    return jsonify(resp.data), 200
-
-
-@habits_bp.route('/logs', methods=['POST'])
-@require_auth
-def log_habit():
-    """
-    POST /api/habits/logs
-    Body: { habit_id, log_date }
-    """
-    body = request.get_json() or {}
-    habit_id = body.get('habit_id')
-    log_date = body.get('log_date')
-    if not habit_id or not log_date:
-        return jsonify({"error": "habit_id and log_date are required"}), 400
-
-    client = user_sb(g.access_token)
-    try:
-        resp = client.from_('habit_logs').insert({
-            "user_id": g.user_id,
-            "habit_id": habit_id,
-            "log_date": log_date
-        }).execute()
-        sync_daily_stats(g.access_token, g.user_id, log_date)
-        return jsonify(resp.data[0] if resp.data else {}), 201
-    except Exception as e:
-        sync_daily_stats(g.access_token, g.user_id, log_date)
-        return jsonify({"message": "Already logged", "detail": str(e)}), 200
-
-
-@habits_bp.route('/logs/<log_id>', methods=['DELETE'])
-@require_auth
-def unlog_habit(log_id):
-    """DELETE /api/habits/logs/<log_id>"""
-    client = user_sb(g.access_token)
-    existing = (client.from_('habit_logs').select('log_date')
-                .eq('id', log_id)
-                .eq('user_id', g.user_id)
-                .limit(1)
-                .execute())
-    rows = existing.data or []
-    log_date = rows[0].get('log_date') if rows else None
-
-    client.from_('habit_logs').delete().eq('id', log_id).eq('user_id', g.user_id).execute()
-    sync_daily_stats(g.access_token, g.user_id, log_date)
-    return jsonify({"message": "Habit unlogged"}), 200
+    return jsonify({"message": "Mood log deleted"}), 200
