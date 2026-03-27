@@ -5,7 +5,8 @@ try:
     from backend.routes.daily_stats_sync import sync_daily_stats
 except ModuleNotFoundError:
     from supabase_client import require_auth, user_sb
-    from .daily_stats_sync import sync_daily_stats
+    from routes.daily_stats_sync import sync_daily_stats
+
 
 habits_bp = Blueprint('habits', __name__)
 
